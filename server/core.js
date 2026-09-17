@@ -24,6 +24,8 @@ export const HEADERS = [
   "atualizado_em",
   "demonstrativo",
 ];
+const localStorageEnabled = () =>
+  process.env.CRM_LOCAL_SERVER === "1" && !process.env.VERCEL;
 export const configured = () => ({
   google: !!(
     process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
@@ -31,9 +33,12 @@ export const configured = () => ({
     process.env.GOOGLE_SHEET_ID
   ),
   whatsapp: !!(process.env.UAZAPI_URL && process.env.UAZAPI_TOKEN),
-  storage: !!(
-    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
-  ),
+  storage:
+    localStorageEnabled() ||
+    !!(
+      process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+    ),
+  storageMode: localStorageEnabled() ? "local" : "redis",
   presenter: !!process.env.PRESENTER_PASSWORD,
 });
 export const fail = (message, status = 400) =>
@@ -44,6 +49,7 @@ export function same(a, b) {
   return x.length === y.length && timingSafeEqual(x, y);
 }
 export function auth(req) {
+  if (localStorageEnabled() && req.localPresenter === true) return true;
   const token = (req.headers.cookie || "")
     .split("; ")
     .find((c) => c.startsWith("flying_presenter="))
@@ -71,6 +77,10 @@ export function session() {
   );
 }
 export async function redis(command) {
+  if (localStorageEnabled()) {
+    const { localCommand } = await import("./local-store.js");
+    return localCommand(command);
+  }
   if (!configured().storage)
     throw fail("Configure o armazenamento persistente no servidor.", 503);
   const r = await fetch(process.env.UPSTASH_REDIS_REST_URL, {

@@ -52,6 +52,17 @@ export default async function handler(req, res) {
         "Entre como apresentador para usar as integrações reais.",
         401,
       );
+    if (action === "connection-test" && req.method === "GET") {
+      const result = await uaz("/instance/status");
+      const storage = await redis(["PING"]);
+      return res
+        .status(200)
+        .json({
+          connected: result.status?.connected === true,
+          loggedIn: result.status?.loggedIn === true,
+          storage: storage === "PONG",
+        });
+    }
     if (action === "campaign-list" && req.method === "GET") {
       const ids = await redis(["SMEMBERS", "flying:campaigns"]);
       const campaigns = await Promise.all(
@@ -150,23 +161,19 @@ export default async function handler(req, res) {
       if (!raw) throw fail("Campanha não encontrada.", 404);
       const c = JSON.parse(raw);
       if (!c.folderId) throw fail("A campanha não possui fila confirmada.");
-      return res
-        .status(200)
-        .json(
-          await uaz("/sender/edit", {
-            folder_id: c.folderId,
-            action: body.command,
-          }),
-        );
+      return res.status(200).json(
+        await uaz("/sender/edit", {
+          folder_id: c.folderId,
+          action: body.command,
+        }),
+      );
     }
     throw fail("Ação não disponível.", 404);
   } catch (e) {
-    res
-      .status(e.status || 500)
-      .json({
-        error: e.status
-          ? e.message
-          : "Falha no servidor. Confira a configuração das integrações.",
-      });
+    res.status(e.status || 500).json({
+      error: e.status
+        ? e.message
+        : "Falha no servidor. Confira a configuração das integrações.",
+    });
   }
 }

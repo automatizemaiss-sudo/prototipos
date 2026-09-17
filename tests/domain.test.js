@@ -152,3 +152,4 @@ test("reserva persistente evita duas filas para a mesma campanha", async () => {
     }
   }
 });
+test('acesso local só vale para requisição marcada pelo servidor de desenvolvimento',async()=>{const {auth}=await import('../server/core.js');const prev=process.env.CRM_LOCAL_SERVER,vercel=process.env.VERCEL;process.env.CRM_LOCAL_SERVER='1';delete process.env.VERCEL;try{assert.equal(auth({headers:{'x-local-presenter':'true'}}),false);assert.equal(auth({headers:{},localPresenter:true}),true);process.env.VERCEL='1';assert.equal(auth({headers:{},localPresenter:true}),false)}finally{if(prev===undefined)delete process.env.CRM_LOCAL_SERVER;else process.env.CRM_LOCAL_SERVER=prev;if(vercel===undefined)delete process.env.VERCEL;else process.env.VERCEL=vercel;}});

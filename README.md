@@ -91,7 +91,7 @@ Nenhum repositório remoto ou projeto Vercel foi criado nesta etapa. Não existe
 
 ## Pendências para cumprir todo o briefing
 
-- Receber e aplicar logo e fotos originais (não estavam nos anexos disponíveis).
+- Receber e aplicar fotos originais. A logo enviada foi aplicada à barra lateral.
 - Configurar e validar credenciais de Google, uAzapi e Redis.
 - Testar envio real, fila, intervalos, pausa, cancelamento, falha e retry com a instância.
 - Validar mídia e limites da instância antes de habilitar envio de arquivos.
@@ -99,3 +99,11 @@ Nenhum repositório remoto ou projeto Vercel foi criado nesta etapa. Não existe
 - Teste end-to-end de sincronização real; tratamento de edições concorrentes diretas na planilha ainda exige cuidado.
 
 Não foram enviadas mensagens reais durante o desenvolvimento.
+
+## Disparo local com a instância configurada
+
+No servidor de desenvolvimento (`npm run dev -- --host 127.0.0.1`), o CRM usa SQLite em `.local-data/crm.sqlite` para armazenar campanhas e reservar IDs atomicamente. O arquivo fica fora do Git. Não é necessário configurar Redis para testar neste computador.
+
+O acesso do apresentador é automático exclusivamente para conexões de loopback (`127.0.0.1`/`localhost`) reconhecidas pelo servidor de desenvolvimento. Esse modo não existe na função publicada na Vercel. Na Vercel continuam obrigatórios Redis persistente e senha do apresentador. Não use o Vite como servidor público.
+
+A uAzapi foi validada em 17/09/2026: conectada e autenticada. Nenhum envio real foi feito nessa validação. Abra Campanhas, selecione Matheus Donha ou Gui Brito, mantenha somente texto, revise e clique em Confirmar envio real. O servidor encaminha a campanha à fila da instância, que continua independente da aba. O teste end-to-end de recebimento só estará validado após essa confirmação explícita.

@@ -1618,3 +1618,49 @@ table,
 .media-placeholder {
   overflow: hidden;
 }
+.brand-logo {
+  width: 64px;
+  height: 38px;
+  flex: none;
+  overflow: hidden;
+  position: relative;
+  background: #000;
+  border-radius: 4px;
+}
+.brand-logo img {
+  width: 72px;
+  height: 72px;
+  max-width: none;
+  position: absolute;
+  left: -4px;
+  top: -18px;
+  object-fit: contain;
+}
+.brand {
+  gap: 9px;
+  padding-left: 0;
+  padding-right: 0;
+}
+.brand strong {
+  font-size: 11px;
+  letter-spacing: 0.6px;
+}
+.brand small {
+  font-size: 7px;
+  letter-spacing: 1px;
+}
+@media (max-width: 800px) {
+  .brand-logo {
+    width: 48px;
+    height: 36px;
+  }
+  .brand-logo img {
+    width: 55px;
+    height: 55px;
+    left: -3px;
+    top: -9px;
+  }
+  .brand {
+    padding-left: 2px;
+  }
+}

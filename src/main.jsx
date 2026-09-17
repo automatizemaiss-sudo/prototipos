@@ -110,9 +110,41 @@ function App() {
     ),
     [conflicts, setConflicts] = useState([]);
   useEffect(() => {
-    request("status")
-      .then(setConnections)
-      .catch(() => {});
+    let active = true;
+    async function loadConnections() {
+      try {
+        const status = await request("status");
+        if (!active) return;
+        setConnections(status);
+        if (status.authenticated && status.storage) {
+          const history = await request("campaign-list");
+          if (active)
+            setData((d) => ({
+              ...d,
+              campaigns: [
+                ...d.campaigns.filter((c) => !c.real),
+                ...history.campaigns.map((c) => ({ ...c, real: true })),
+              ],
+            }));
+        }
+        if (status.authenticated && status.whatsapp && status.storage) {
+          const checked = await request("connection-test");
+          if (active)
+            setConnections((s) => ({
+              ...s,
+              verified:
+                checked.connected && checked.loggedIn && checked.storage,
+            }));
+        }
+      } catch (e) {
+        if (active)
+          setConnections((s) => ({ ...s, connectionError: e.message }));
+      }
+    }
+    loadConnections();
+    return () => {
+      active = false;
+    };
   }, []);
   const [page, setPage] = useState("Dashboard"),
     [filter, setFilter] = useState({}),
@@ -370,8 +402,8 @@ function App() {
     <div className="shell">
       <aside>
         <div className="brand">
-          <div className="brand-mark">
-            FI<span>↗</span>
+          <div className="brand-logo">
+            <img src="/flying-imports-logo.png" alt="Logo Flying Imports" />
           </div>
           <div>
             <strong>FLYING IMPORTS</strong>
@@ -1019,7 +1051,10 @@ function App() {
                     "WhatsApp · uAzapi",
                     "Aproxime sua marca de cada torcedor.",
                     "Campanhas manuais, com revisão de público e conteúdo.",
-                    "Credenciais e processamento persistente pendentes.",
+                    connections.verified
+                      ? "WhatsApp conectado. Pronto para disparos de texto aos contatos autorizados."
+                      : connections.connectionError ||
+                        "Configure e valide a conexão antes do teste real.",
                   ],
                   [
                     "Vercel",
@@ -1033,15 +1068,17 @@ function App() {
                       <Plug size={24} />
                     </span>
                     <span className="badge warning">
-                      {(
-                        title === "Google Sheets"
-                          ? connections.google
-                          : title === "WhatsApp · uAzapi"
-                            ? connections.whatsapp
-                            : false
-                      )
-                        ? "Configurado · validar conexão"
-                        : "Não conectado"}
+                      {title === "WhatsApp · uAzapi" && connections.verified
+                        ? "Conectado"
+                        : (
+                              title === "Google Sheets"
+                                ? connections.google
+                                : title === "WhatsApp · uAzapi"
+                                  ? connections.whatsapp
+                                  : false
+                            )
+                          ? "Configurado · validar conexão"
+                          : "Não conectado"}
                     </span>
                     <h2>{title}</h2>
                     <b>{sub}</b>
@@ -1062,9 +1099,39 @@ function App() {
                     ) : (
                       <button
                         className="secondary"
-                        onClick={() => setToast(status)}
+                        onClick={async () => {
+                          if (title !== "WhatsApp · uAzapi") {
+                            setToast(status);
+                            return;
+                          }
+                          setBusy(true);
+                          try {
+                            const result = await request("connection-test");
+                            setConnections((s) => ({
+                              ...s,
+                              verified:
+                                result.connected &&
+                                result.loggedIn &&
+                                result.storage,
+                            }));
+                            setToast(
+                              result.connected &&
+                                result.loggedIn &&
+                                result.storage
+                                ? "WhatsApp conectado e armazenamento disponível. Pronto para revisar um teste real."
+                                : "A instância não está conectada e autenticada no WhatsApp.",
+                            );
+                          } catch (e) {
+                            setToast(e.message);
+                          } finally {
+                            setBusy(false);
+                          }
+                        }}
                       >
-                        Ver configuração <ArrowUpRight size={16} />
+                        {title === "WhatsApp · uAzapi"
+                          ? "Testar conexão"
+                          : "Ver configuração"}{" "}
+                        <ArrowUpRight size={16} />
                       </button>
                     )}
                   </section>
