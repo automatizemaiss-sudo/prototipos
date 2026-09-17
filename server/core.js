@@ -1,9 +1,4 @@
-import {
-  createHmac,
-  timingSafeEqual,
-  createSign,
-  randomUUID,
-} from "node:crypto";
+import { createSign } from "node:crypto";
 import {
   normalizePhone,
   realAudience,
@@ -39,43 +34,9 @@ export const configured = () => ({
       process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
     ),
   storageMode: localStorageEnabled() ? "local" : "redis",
-  presenter: !!process.env.PRESENTER_PASSWORD,
 });
 export const fail = (message, status = 400) =>
   Object.assign(new Error(message), { status });
-export function same(a, b) {
-  const x = Buffer.from(a || ""),
-    y = Buffer.from(b || "");
-  return x.length === y.length && timingSafeEqual(x, y);
-}
-export function auth(req) {
-  if (localStorageEnabled() && req.localPresenter === true) return true;
-  const token = (req.headers.cookie || "")
-    .split("; ")
-    .find((c) => c.startsWith("flying_presenter="))
-    ?.split("=")[1];
-  if (!process.env.PRESENTER_PASSWORD || !token) return false;
-  const [expires, sig] = token.split(".");
-  return (
-    +expires > Date.now() &&
-    same(
-      sig,
-      createHmac("sha256", process.env.PRESENTER_PASSWORD)
-        .update(expires)
-        .digest("hex"),
-    )
-  );
-}
-export function session() {
-  const expires = String(Date.now() + 8 * 3600000);
-  return (
-    expires +
-    "." +
-    createHmac("sha256", process.env.PRESENTER_PASSWORD)
-      .update(expires)
-      .digest("hex")
-  );
-}
 export async function redis(command) {
   if (localStorageEnabled()) {
     const { localCommand } = await import("./local-store.js");

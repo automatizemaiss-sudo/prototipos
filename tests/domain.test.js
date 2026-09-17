@@ -62,31 +62,6 @@ test("sincronização não sobrescreve conflitos", () => {
   assert.equal(mergeContacts([c], [remote], [c]).contacts[0].name, "Remoto");
   assert.equal(mergeContacts([c, c], [c], [c]).conflicts.length, 1);
 });
-test("rota real exige autenticação antes de qualquer chamada externa", async () => {
-  const { default: handler } = await import("../api/crm.js");
-  let status, body;
-  const res = {
-    setHeader() {},
-    status(s) {
-      status = s;
-      return this;
-    },
-    json(v) {
-      body = v;
-    },
-  };
-  await handler(
-    {
-      method: "POST",
-      headers: {},
-      query: { action: "campaign-start" },
-      body: { recipients: seed().contacts },
-    },
-    res,
-  );
-  assert.equal(status, 401);
-  assert.match(body.error, /apresentador/);
-});
 test("reserva persistente evita duas filas para a mesma campanha", async () => {
   const { saveCampaign } = await import("../server/core.js");
   const originalFetch = globalThis.fetch;
@@ -152,4 +127,24 @@ test("reserva persistente evita duas filas para a mesma campanha", async () => {
     }
   }
 });
-test('acesso local só vale para requisição marcada pelo servidor de desenvolvimento',async()=>{const {auth}=await import('../server/core.js');const prev=process.env.CRM_LOCAL_SERVER,vercel=process.env.VERCEL;process.env.CRM_LOCAL_SERVER='1';delete process.env.VERCEL;try{assert.equal(auth({headers:{'x-local-presenter':'true'}}),false);assert.equal(auth({headers:{},localPresenter:true}),true);process.env.VERCEL='1';assert.equal(auth({headers:{},localPresenter:true}),false)}finally{if(prev===undefined)delete process.env.CRM_LOCAL_SERVER;else process.env.CRM_LOCAL_SERVER=prev;if(vercel===undefined)delete process.env.VERCEL;else process.env.VERCEL=vercel;}});
+test("status disponível sem senha ou sessão", async () => {
+  const { default: handler } = await import("../api/crm.js");
+  let status, body;
+  const res = {
+    setHeader() {},
+    status(n) {
+      status = n;
+      return this;
+    },
+    json(v) {
+      body = v;
+    },
+  };
+  await handler(
+    { method: "GET", headers: {}, query: { action: "status" } },
+    res,
+  );
+  assert.equal(status, 200);
+  assert.equal("presenter" in body, false);
+  assert.equal("authenticated" in body, false);
+});

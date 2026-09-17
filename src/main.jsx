@@ -116,7 +116,7 @@ function App() {
         const status = await request("status");
         if (!active) return;
         setConnections(status);
-        if (status.authenticated && status.storage) {
+        if (status.storage) {
           const history = await request("campaign-list");
           if (active)
             setData((d) => ({
@@ -127,7 +127,7 @@ function App() {
               ],
             }));
         }
-        if (status.authenticated && status.whatsapp && status.storage) {
+        if (status.whatsapp && status.storage) {
           const checked = await request("connection-test");
           if (active)
             setConnections((s) => ({
@@ -452,7 +452,7 @@ function App() {
           </div>
           <span className="header-status">
             <span className="live-dot" />{" "}
-            {connections.authenticated ? "Apresentador" : "Demonstração local"}
+            {connections.verified ? "WhatsApp conectado" : "Demonstração"}
           </span>
         </header>
         <main>
@@ -955,11 +955,9 @@ function App() {
               <div className="notice">
                 <AlertCircle size={19} />
                 <span>
-                  {connections.authenticated &&
-                  connections.whatsapp &&
-                  connections.storage
-                    ? "Modo apresentador. Envios reais restritos aos dois contatos autorizados."
-                    : "Modo demonstração. Entre como apresentador e configure as integrações para habilitar testes reais."}
+                  {connections.whatsapp && connections.storage
+                    ? "Envios reais disponíveis para os dois contatos autorizados."
+                    : "Configure as integrações para habilitar testes reais."}
                 </span>
               </div>
               <section className="panel">
@@ -1026,18 +1024,9 @@ function App() {
               <div className="notice">
                 <Plug size={18} />
                 <span>
-                  {connections.authenticated
-                    ? "Acesso do apresentador ativo."
-                    : "Conecte as ferramentas no servidor e entre como apresentador para sincronizar e enviar testes."}
+                  Acesso direto, sem senha. Revise o público e a mensagem antes
+                  de confirmar cada disparo.
                 </span>
-                {!connections.authenticated && (
-                  <button
-                    className="secondary"
-                    onClick={() => open("login", { password: "" })}
-                  >
-                    Entrar como apresentador
-                  </button>
-                )}
               </div>
               <div className="integration-grid">
                 {[
@@ -1241,7 +1230,6 @@ function App() {
                       : "Nova oportunidade",
                     campaign: "Nova campanha",
                     history: "Detalhes da campanha",
-                    login: "Acesso do apresentador",
                   }[modal]
                 }
               </h2>
@@ -1257,52 +1245,6 @@ function App() {
               <div role="alert" className="notice error">
                 {error}
               </div>
-            )}
-            {modal === "login" && (
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  setBusy(true);
-                  try {
-                    await request("login", { password: draft.password });
-                    const status = await request("status");
-                    setConnections(status);
-                    if (status.storage) {
-                      const history = await request("campaign-list");
-                      setData((d) => ({
-                        ...d,
-                        campaigns: [
-                          ...d.campaigns.filter((c) => !c.real),
-                          ...history.campaigns.map((c) => ({
-                            ...c,
-                            real: true,
-                          })),
-                        ],
-                      }));
-                    }
-                    close();
-                    setToast("Acesso do apresentador ativo.");
-                  } catch (e) {
-                    setError(e.message);
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                <Field
-                  label="Senha do apresentador"
-                  type="password"
-                  required
-                  value={draft.password}
-                  onChange={(v) => field("password", v)}
-                />
-                <p>A senha é definida em PRESENTER_PASSWORD no servidor.</p>
-                <div className="modal-actions">
-                  <button disabled={busy} className="primary">
-                    Entrar
-                  </button>
-                </div>
-              </form>
             )}
             {modal === "contact" && (
               <form onSubmit={saveContact}>
@@ -1707,9 +1649,7 @@ function App() {
                     </div>
                     <div className="notice">
                       <AlertCircle size={18} />
-                      {connections.authenticated &&
-                      connections.whatsapp &&
-                      connections.storage
+                      {connections.whatsapp && connections.storage
                         ? "O teste real enviará apenas aos contatos autorizados. Revise a mensagem antes de confirmar."
                         : "Envio real indisponível. Salve o rascunho ou execute uma simulação local, sem enviar mensagens."}
                     </div>
@@ -1766,21 +1706,19 @@ function App() {
                       >
                         Salvar rascunho
                       </button>
-                      {connections.authenticated &&
-                        connections.whatsapp &&
-                        connections.storage && (
-                          <button
-                            disabled={
-                              busy ||
-                              !realAudience(picked).length ||
-                              !!draft.mediaType
-                            }
-                            className="primary"
-                            onClick={sendReal}
-                          >
-                            Confirmar envio real ({realAudience(picked).length})
-                          </button>
-                        )}
+                      {connections.whatsapp && connections.storage && (
+                        <button
+                          disabled={
+                            busy ||
+                            !realAudience(picked).length ||
+                            !!draft.mediaType
+                          }
+                          className="primary"
+                          onClick={sendReal}
+                        >
+                          Confirmar envio real ({realAudience(picked).length})
+                        </button>
+                      )}
                       <button
                         className="primary"
                         onClick={() => saveCampaign(true)}

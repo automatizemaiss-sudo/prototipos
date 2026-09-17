@@ -20,16 +20,6 @@ export default defineConfig(({ mode }) => {
                 }
               }
               req.body = raw ? JSON.parse(raw) : {};
-              const localHosts = ["127.0.0.1", "localhost", "[::1]"];
-              const host = new URL("http://" + req.headers.host).hostname;
-              const remote = req.socket.remoteAddress;
-              const origin = req.headers.origin
-                ? new URL(req.headers.origin).hostname
-                : host;
-              req.localPresenter =
-                localHosts.includes(host) &&
-                localHosts.includes(origin) &&
-                ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(remote);
               res.status = (code) => {
                 res.statusCode = code;
                 return res;

@@ -1,9 +1,6 @@
 import { createHash } from "node:crypto";
 import {
   configured,
-  auth,
-  same,
-  session,
   fail,
   readContacts,
   mergeContacts,
@@ -30,38 +27,16 @@ export default async function handler(req, res) {
       throw fail("Origem não autorizada.", 403);
     if (action === "status") {
       if (req.method !== "GET") throw fail("Método não permitido.", 405);
-      return res
-        .status(200)
-        .json({ ...configured(), authenticated: auth(req) });
+      return res.status(200).json({ ...configured() });
     }
-    if (action === "login") {
-      if (req.method !== "POST") throw fail("Método não permitido.", 405);
-      if (
-        !process.env.PRESENTER_PASSWORD ||
-        !same(body.password, process.env.PRESENTER_PASSWORD)
-      )
-        throw fail("Senha do apresentador inválida.", 401);
-      res.setHeader(
-        "Set-Cookie",
-        `flying_presenter=${session()}; Path=/api; HttpOnly; SameSite=Strict; Max-Age=28800${process.env.VERCEL ? "; Secure" : ""}`,
-      );
-      return res.status(200).json({ authenticated: true });
-    }
-    if (!auth(req))
-      throw fail(
-        "Entre como apresentador para usar as integrações reais.",
-        401,
-      );
     if (action === "connection-test" && req.method === "GET") {
       const result = await uaz("/instance/status");
       const storage = await redis(["PING"]);
-      return res
-        .status(200)
-        .json({
-          connected: result.status?.connected === true,
-          loggedIn: result.status?.loggedIn === true,
-          storage: storage === "PONG",
-        });
+      return res.status(200).json({
+        connected: result.status?.connected === true,
+        loggedIn: result.status?.loggedIn === true,
+        storage: storage === "PONG",
+      });
     }
     if (action === "campaign-list" && req.method === "GET") {
       const ids = await redis(["SMEMBERS", "flying:campaigns"]);

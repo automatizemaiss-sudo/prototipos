@@ -45,7 +45,6 @@ Copie `.env.example` para `.env.local` no desenvolvimento. Na Vercel, configure 
 
 | Variável                       | Uso                                                         |
 | ------------------------------ | ----------------------------------------------------------- |
-| `PRESENTER_PASSWORD`           | Senha forte do apresentador; libera integrações pelo painel |
 | `GOOGLE_SERVICE_ACCOUNT_EMAIL` | E-mail de conta de serviço com Google Sheets API habilitada |
 | `GOOGLE_PRIVATE_KEY`           | Chave privada da conta, com quebras reais ou `\n`           |
 | `GOOGLE_SHEET_ID`              | `1np85HlBvIbnVI1eVLWEnTKqzR4tLpMti_fS1OfCYea4`              |
@@ -54,7 +53,7 @@ Copie `.env.example` para `.env.local` no desenvolvimento. Na Vercel, configure 
 | `UPSTASH_REDIS_REST_URL`       | Endpoint Redis REST para persistência e idempotência        |
 | `UPSTASH_REDIS_REST_TOKEN`     | Token Redis REST                                            |
 
-Compartilhe a planilha com o e-mail da conta de serviço como editor. Entre em Integrações → Entrar como apresentador. O conector Google Drive da conversa não fornece credenciais ao aplicativo publicado.
+Compartilhe a planilha com o e-mail da conta de serviço como editor. O acesso é direto, sem senha. O conector Google Drive da conversa não fornece credenciais ao aplicativo publicado.
 
 ### Sincronização manual
 
@@ -66,7 +65,7 @@ Limitação: a API Sheets não oferece transação atômica com edições feitas
 
 Endpoints oficiais usados: `/sender/advanced`, `/sender/listfolders`, `/sender/listmessages`, `/sender/edit`. A fila nativa da uAzapi recebe intervalos em segundos e continua fora da aba. Não há timer de envio no navegador nem função Vercel dormindo entre destinatários.
 
-O servidor filtra exclusivamente `+5542999883017` e `+5511981205438`, exclui demonstrativos e deduplica os números. A sessão do apresentador fica em cookie HttpOnly. O registro da campanha é reservado no Redis com `SET NX` antes da chamada à uAzapi. Repetir o mesmo ID não cria outra fila. Se houver timeout ou resposta incerta, o registro fica bloqueado para reenvio automático: reconcilie com a fila da instância.
+O servidor filtra exclusivamente `+5542999883017` e `+5511981205438`, exclui demonstrativos e deduplica os números. Não há login ou senha neste protótipo, conforme solicitado. O registro da campanha é reservado no Redis com `SET NX` antes da chamada à uAzapi. Repetir o mesmo ID não cria outra fila. Se houver timeout ou resposta incerta, o registro fica bloqueado para reenvio automático: reconcilie com a fila da instância.
 
 Pausa, retomada e cancelamento afetam a fila correspondente. Nova tentativa exige revisão e consulta renovada de mensagens `Failed`; o servidor deriva os destinatários do histórico e usa um ID determinístico por conjunto de falhas. Mensagens já enviadas não são incluídas. A resposta de inclusão na fila é “aceita na fila”, não entregue/lida; estados de entrega/leitura só aparecem quando retornados pela API.
 
@@ -104,6 +103,6 @@ Não foram enviadas mensagens reais durante o desenvolvimento.
 
 No servidor de desenvolvimento (`npm run dev -- --host 127.0.0.1`), o CRM usa SQLite em `.local-data/crm.sqlite` para armazenar campanhas e reservar IDs atomicamente. O arquivo fica fora do Git. Não é necessário configurar Redis para testar neste computador.
 
-O acesso do apresentador é automático exclusivamente para conexões de loopback (`127.0.0.1`/`localhost`) reconhecidas pelo servidor de desenvolvimento. Esse modo não existe na função publicada na Vercel. Na Vercel continuam obrigatórios Redis persistente e senha do apresentador. Não use o Vite como servidor público.
+O protótipo não exige login ou senha, tanto localmente quanto na publicação. Na Vercel continua necessário Redis persistente. Quem acessar o link poderá revisar e iniciar testes para os dois números autorizados. Não use o Vite como servidor público.
 
 A uAzapi foi validada em 17/09/2026: conectada e autenticada. Nenhum envio real foi feito nessa validação. Abra Campanhas, selecione Matheus Donha ou Gui Brito, mantenha somente texto, revise e clique em Confirmar envio real. O servidor encaminha a campanha à fila da instância, que continua independente da aba. O teste end-to-end de recebimento só estará validado após essa confirmação explícita.
