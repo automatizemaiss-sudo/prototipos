@@ -1,3 +1,4 @@
+import { uazapiConfig } from "./demo-config.js";
 import { createSign, createHmac, timingSafeEqual } from "node:crypto";
 import {
   normalizePhone,
@@ -27,7 +28,7 @@ export const configured = () => ({
     process.env.GOOGLE_PRIVATE_KEY &&
     process.env.GOOGLE_SHEET_ID
   ),
-  whatsapp: !!(process.env.UAZAPI_URL && process.env.UAZAPI_TOKEN),
+  whatsapp: !!(uazapiConfig().url && uazapiConfig().token),
   storage:
     localStorageEnabled() ||
     !!(
@@ -64,13 +65,13 @@ export async function redis(command) {
 }
 export async function uaz(path, body) {
   if (!configured().whatsapp) throw fail("uAzapi não configurada.", 503);
-  const base = new URL(process.env.UAZAPI_URL);
+  const base = new URL(uazapiConfig().url);
   if (base.protocol !== "https:")
     throw fail("A URL da uAzapi deve usar HTTPS.", 503);
   const r = await fetch(new URL(path, base), {
     method: body ? "POST" : "GET",
     headers: {
-      token: process.env.UAZAPI_TOKEN,
+      token: uazapiConfig().token,
       "Content-Type": "application/json",
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
@@ -371,18 +372,18 @@ function receiptFor(record) {
   return (
     payload +
     "." +
-    createHmac("sha256", process.env.UAZAPI_TOKEN).update(payload).digest("hex")
+    createHmac("sha256", uazapiConfig().token).update(payload).digest("hex")
   );
 }
 export function readReceipt(value, id) {
   if (
     typeof value !== "string" ||
     value.length > 30000 ||
-    !process.env.UAZAPI_TOKEN
+    !uazapiConfig().token
   )
     throw fail("Comprovante da campanha indisponível.", 409);
   const [payload, signature] = value.split(".");
-  const expected = createHmac("sha256", process.env.UAZAPI_TOKEN)
+  const expected = createHmac("sha256", uazapiConfig().token)
     .update(payload)
     .digest("hex");
   if (

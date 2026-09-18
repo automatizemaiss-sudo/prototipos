@@ -114,3 +114,9 @@ Para demonstrar somente disparos de texto, configure apenas `UAZAPI_URL` e `UAZA
 Um comprovante assinado pelo servidor fica no navegador e permite consultar, pausar, continuar e cancelar aquela fila. Não há histórico central do CRM nem nova tentativa automática de falhas nesse modo. A lista de pastas da uAzapi é consultada antes de reenviar o mesmo ID, mas essa leitura não é uma reserva atômica entre funções Vercel: não existe garantia de envio único em confirmações simultâneas. Use uma aba na demonstração. Respostas incertas exigem conferir a instância antes de outro disparo.
 
 Para produção, Supabase/Postgres pode substituir SQLite/Redis com tabelas de campanhas e destinatários, restrições únicas e transações. Essa adaptação não está implementada agora.
+
+## Configuração temporária incluída no código
+
+Por solicitação explícita, `server/demo-config.js` inclui a URL e o token descartável da instância demonstrativa. A API usa esses valores quando `UAZAPI_URL` e `UAZAPI_TOKEN` estiverem ausentes ou vazios no ambiente da Vercel. Variáveis de ambiente preenchidas têm prioridade. O módulo não é importado pelo frontend. Remover o fallback quando a instância demonstrativa for desativada.
+
+A conexão foi validada sem `.env` e sem Redis: WhatsApp conectado e autenticado. Essa validação não envia mensagens.
