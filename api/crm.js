@@ -10,6 +10,7 @@ import {
   uaz,
   saveCampaign,
   failedRecipients,
+  loadCampaign,
 } from "../server/core.js";
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
@@ -31,7 +32,7 @@ export default async function handler(req, res) {
     }
     if (action === "connection-test" && req.method === "GET") {
       const result = await uaz("/instance/status");
-      const storage = await redis(["PING"]);
+      const storage = configured().storage ? await redis(["PING"]) : null;
       return res.status(200).json({
         connected: result.status?.connected === true,
         loggedIn: result.status?.loggedIn === true,
@@ -39,6 +40,7 @@ export default async function handler(req, res) {
       });
     }
     if (action === "campaign-list" && req.method === "GET") {
+      if (!configured().storage) return res.status(200).json({ campaigns: [] });
       const ids = await redis(["SMEMBERS", "flying:campaigns"]);
       const campaigns = await Promise.all(
         ids.map(async (id) =>
@@ -98,9 +100,7 @@ export default async function handler(req, res) {
     if (action === "campaign-status" && req.method === "POST") {
       if (!/^[\w-]{16,80}$/.test(body.id || ""))
         throw fail("Campanha inválida.");
-      const raw = await redis(["GET", "flying:campaign:" + body.id]);
-      if (!raw) throw fail("Campanha não encontrada.", 404);
-      let c = JSON.parse(raw);
+      let c = await loadCampaign(body.id, body.receipt);
       if (c.folderId) {
         const [folders, messages] = await Promise.all([
           uaz("/sender/listfolders"),
@@ -125,16 +125,15 @@ export default async function handler(req, res) {
           ).length,
           failed: ms.filter((m) => m.status === "Failed").length,
         };
-        await redis(["SET", "flying:campaign:" + c.id, JSON.stringify(c)]);
+        if (!c.direct)
+          await redis(["SET", "flying:campaign:" + c.id, JSON.stringify(c)]);
       }
       return res.status(200).json(c);
     }
     if (action === "campaign-control" && req.method === "POST") {
       if (!["stop", "continue", "delete"].includes(body.command))
         throw fail("Ação inválida.");
-      const raw = await redis(["GET", "flying:campaign:" + body.id]);
-      if (!raw) throw fail("Campanha não encontrada.", 404);
-      const c = JSON.parse(raw);
+      const c = await loadCampaign(body.id, body.receipt);
       if (!c.folderId) throw fail("A campanha não possui fila confirmada.");
       return res.status(200).json(
         await uaz("/sender/edit", {

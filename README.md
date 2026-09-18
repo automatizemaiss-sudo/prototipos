@@ -65,7 +65,7 @@ Limitação: a API Sheets não oferece transação atômica com edições feitas
 
 Endpoints oficiais usados: `/sender/advanced`, `/sender/listfolders`, `/sender/listmessages`, `/sender/edit`. A fila nativa da uAzapi recebe intervalos em segundos e continua fora da aba. Não há timer de envio no navegador nem função Vercel dormindo entre destinatários.
 
-O servidor filtra exclusivamente `+5542999883017` e `+5511981205438`, exclui demonstrativos e deduplica os números. Não há login ou senha neste protótipo, conforme solicitado. O registro da campanha é reservado no Redis com `SET NX` antes da chamada à uAzapi. Repetir o mesmo ID não cria outra fila. Se houver timeout ou resposta incerta, o registro fica bloqueado para reenvio automático: reconcilie com a fila da instância.
+O servidor filtra exclusivamente `+5542999883017` e `+5511981205438`, exclui demonstrativos e deduplica os números. Não há login ou senha neste protótipo, conforme solicitado. Quando há armazenamento configurado, o registro da campanha é reservado com `SET NX` antes da chamada à uAzapi. Repetir o mesmo ID não cria outra fila. Se houver timeout ou resposta incerta, o registro fica bloqueado para reenvio automático: reconcilie com a fila da instância.
 
 Pausa, retomada e cancelamento afetam a fila correspondente. Nova tentativa exige revisão e consulta renovada de mensagens `Failed`; o servidor deriva os destinatários do histórico e usa um ID determinístico por conjunto de falhas. Mensagens já enviadas não são incluídas. A resposta de inclusão na fila é “aceita na fila”, não entregue/lida; estados de entrega/leitura só aparecem quando retornados pela API.
 
@@ -91,7 +91,7 @@ Nenhum repositório remoto ou projeto Vercel foi criado nesta etapa. Não existe
 ## Pendências para cumprir todo o briefing
 
 - Receber e aplicar fotos originais. A logo enviada foi aplicada à barra lateral.
-- Configurar e validar credenciais de Google, uAzapi e Redis.
+- Configurar Google para sincronização; Redis é opcional. uAzapi já foi validada localmente.
 - Testar envio real, fila, intervalos, pausa, cancelamento, falha e retry com a instância.
 - Validar mídia e limites da instância antes de habilitar envio de arquivos.
 - Publicar repositório e projeto Vercel e testar o link externo.
@@ -103,6 +103,14 @@ Não foram enviadas mensagens reais durante o desenvolvimento.
 
 No servidor de desenvolvimento (`npm run dev -- --host 127.0.0.1`), o CRM usa SQLite em `.local-data/crm.sqlite` para armazenar campanhas e reservar IDs atomicamente. O arquivo fica fora do Git. Não é necessário configurar Redis para testar neste computador.
 
-O protótipo não exige login ou senha, tanto localmente quanto na publicação. Na Vercel continua necessário Redis persistente. Quem acessar o link poderá revisar e iniciar testes para os dois números autorizados. Não use o Vite como servidor público.
+O protótipo não exige login ou senha, tanto localmente quanto na publicação. Na Vercel, Redis é opcional: sem ele o protótipo envia diretamente pela fila da uAzapi. Quem acessar o link poderá revisar e iniciar testes para os dois números autorizados. Não use o Vite como servidor público.
 
 A uAzapi foi validada em 17/09/2026: conectada e autenticada. Nenhum envio real foi feito nessa validação. Abra Campanhas, selecione Matheus Donha ou Gui Brito, mantenha somente texto, revise e clique em Confirmar envio real. O servidor encaminha a campanha à fila da instância, que continua independente da aba. O teste end-to-end de recebimento só estará validado após essa confirmação explícita.
+
+## Modo simplificado na Vercel, sem banco
+
+Para demonstrar somente disparos de texto, configure apenas `UAZAPI_URL` e `UAZAPI_TOKEN` em Production e publique esta versão atualizada. Google, Redis e Supabase não são necessários nesse modo. O servidor valida a lista dos dois números autorizados e cria a fila na uAzapi. A inclusão na fila é confirmada pela API; não significa entrega.
+
+Um comprovante assinado pelo servidor fica no navegador e permite consultar, pausar, continuar e cancelar aquela fila. Não há histórico central do CRM nem nova tentativa automática de falhas nesse modo. A lista de pastas da uAzapi é consultada antes de reenviar o mesmo ID, mas essa leitura não é uma reserva atômica entre funções Vercel: não existe garantia de envio único em confirmações simultâneas. Use uma aba na demonstração. Respostas incertas exigem conferir a instância antes de outro disparo.
+
+Para produção, Supabase/Postgres pode substituir SQLite/Redis com tabelas de campanhas e destinatários, restrições únicas e transações. Essa adaptação não está implementada agora.

@@ -127,13 +127,12 @@ function App() {
               ],
             }));
         }
-        if (status.whatsapp && status.storage) {
+        if (status.whatsapp) {
           const checked = await request("connection-test");
           if (active)
             setConnections((s) => ({
               ...s,
-              verified:
-                checked.connected && checked.loggedIn && checked.storage,
+              verified: checked.connected && checked.loggedIn,
             }));
         }
       } catch (e) {
@@ -955,7 +954,7 @@ function App() {
               <div className="notice">
                 <AlertCircle size={19} />
                 <span>
-                  {connections.whatsapp && connections.storage
+                  {connections.whatsapp
                     ? "Envios reais disponíveis para os dois contatos autorizados."
                     : "Configure as integrações para habilitar testes reais."}
                 </span>
@@ -1098,16 +1097,11 @@ function App() {
                             const result = await request("connection-test");
                             setConnections((s) => ({
                               ...s,
-                              verified:
-                                result.connected &&
-                                result.loggedIn &&
-                                result.storage,
+                              verified: result.connected && result.loggedIn,
                             }));
                             setToast(
-                              result.connected &&
-                                result.loggedIn &&
-                                result.storage
-                                ? "WhatsApp conectado e armazenamento disponível. Pronto para revisar um teste real."
+                              result.connected && result.loggedIn
+                                ? "WhatsApp conectado. Pronto para revisar um teste real."
                                 : "A instância não está conectada e autenticada no WhatsApp.",
                             );
                           } catch (e) {
@@ -1649,7 +1643,7 @@ function App() {
                     </div>
                     <div className="notice">
                       <AlertCircle size={18} />
-                      {connections.whatsapp && connections.storage
+                      {connections.whatsapp
                         ? "O teste real enviará apenas aos contatos autorizados. Revise a mensagem antes de confirmar."
                         : "Envio real indisponível. Salve o rascunho ou execute uma simulação local, sem enviar mensagens."}
                     </div>
@@ -1706,7 +1700,7 @@ function App() {
                       >
                         Salvar rascunho
                       </button>
-                      {connections.whatsapp && connections.storage && (
+                      {connections.whatsapp && (
                         <button
                           disabled={
                             busy ||
@@ -1775,6 +1769,7 @@ function App() {
                     className="secondary"
                     disabled={
                       busy ||
+                      draft.direct ||
                       !draft.messages?.some((m) => m.status === "Failed")
                     }
                     onClick={reviewRetry}
@@ -1940,7 +1935,20 @@ function App() {
       open("history", c);
       setPage("Campanhas");
     } catch (e) {
-      setError(e.message);
+      const uncertain = {
+        ...draft,
+        real: true,
+        status: "Verificação necessária",
+        total: realAudience(picked).length,
+        createdAt: new Date().toISOString(),
+        error: e.message + " Confira a instância antes de criar outro disparo.",
+      };
+      update("campaigns", [
+        ...data.campaigns.filter((c) => c.id !== draft.id),
+        uncertain,
+      ]);
+      open("history", uncertain);
+      setPage("Campanhas");
     } finally {
       setBusy(false);
     }
@@ -1975,8 +1983,15 @@ function App() {
     setBusy(true);
     try {
       if (command !== "refresh")
-        await request("campaign-control", { id: draft.id, command });
-      const result = await request("campaign-status", { id: draft.id });
+        await request("campaign-control", {
+          id: draft.id,
+          receipt: draft.receipt,
+          command,
+        });
+      const result = await request("campaign-status", {
+        id: draft.id,
+        receipt: draft.receipt,
+      });
       const c = { ...result, real: true };
       setDraft(c);
       update(

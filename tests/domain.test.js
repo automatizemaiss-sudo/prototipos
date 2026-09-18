@@ -148,3 +148,65 @@ test("status disponível sem senha ou sessão", async () => {
   assert.equal("presenter" in body, false);
   assert.equal("authenticated" in body, false);
 });
+test("modo direto envia apenas autorizados sem Redis e reutiliza fila confirmada", async () => {
+  const { saveCampaign, readReceipt } = await import("../server/core.js");
+  const keys = [
+    "CRM_LOCAL_SERVER",
+    "UPSTASH_REDIS_REST_URL",
+    "UPSTASH_REDIS_REST_TOKEN",
+    "UAZAPI_URL",
+    "UAZAPI_TOKEN",
+  ];
+  const before = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
+  const realFetch = globalThis.fetch;
+  delete process.env.CRM_LOCAL_SERVER;
+  delete process.env.UPSTASH_REDIS_REST_URL;
+  delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  process.env.UAZAPI_URL = "https://uaz.test";
+  process.env.UAZAPI_TOKEN = "test-only";
+  let sends = 0,
+    folder;
+  globalThis.fetch = async (url, opt) => {
+    const path = new URL(url).pathname;
+    if (path === "/sender/listfolders")
+      return new Response(JSON.stringify(folder ? [folder] : []));
+    assert.equal(path, "/sender/advanced");
+    const body = JSON.parse(opt.body);
+    assert.equal(body.messages.length, 2);
+    assert.deepEqual(
+      body.messages.map((m) => m.number),
+      ["5542999883017", "5511981205438"],
+    );
+    folder = {
+      id: "test-folder-direct",
+      info: body.info,
+      log_total: 2,
+      status: "queued",
+    };
+    sends++;
+    return new Response(JSON.stringify({ folder_id: folder.id, count: 2 }));
+  };
+  try {
+    const draft = {
+      id: "direct-campaign-test-1234",
+      name: "Teste direto",
+      message: "Olá {nome}",
+      min: 2,
+      max: 3,
+      recipients: seed().contacts,
+    };
+    const first = await saveCampaign(draft),
+      second = await saveCampaign(draft);
+    assert.equal(first.direct, true);
+    assert.equal(sends, 1);
+    assert.equal(first.folderId, second.folderId);
+    assert.equal(readReceipt(first.receipt, first.id).folderId, first.folderId);
+    assert.throws(() => readReceipt(first.receipt + "x", first.id));
+  } finally {
+    globalThis.fetch = realFetch;
+    for (const k of keys) {
+      if (before[k] === undefined) delete process.env[k];
+      else process.env[k] = before[k];
+    }
+  }
+});

@@ -1,4 +1,4 @@
-import { createSign } from "node:crypto";
+import { createSign, createHmac, timingSafeEqual } from "node:crypto";
 import {
   normalizePhone,
   realAudience,
@@ -33,7 +33,11 @@ export const configured = () => ({
     !!(
       process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
     ),
-  storageMode: localStorageEnabled() ? "local" : "redis",
+  storageMode: localStorageEnabled()
+    ? "local"
+    : process.env.UPSTASH_REDIS_REST_URL
+      ? "redis"
+      : "direct",
 });
 export const fail = (message, status = 400) =>
   Object.assign(new Error(message), { status });
@@ -294,6 +298,7 @@ export async function saveCampaign(draft) {
     createdAt: new Date().toISOString(),
     total: recipients.length,
   };
+  if (!configured().storage) return directCampaign(record);
   const acquired = await redis(["SET", key, JSON.stringify(record), "NX"]);
   if (!acquired) return JSON.parse(await redis(["GET", key]));
   await redis(["SADD", "flying:campaigns", id]);
@@ -359,4 +364,93 @@ export async function failedRecipients(id) {
     failedIds: failed.map((m) => m.id).sort(),
     recipients: campaign.recipients.filter((c) => phones.includes(c.phone)),
   };
+}
+
+function receiptFor(record) {
+  const payload = Buffer.from(JSON.stringify(record)).toString("base64url");
+  return (
+    payload +
+    "." +
+    createHmac("sha256", process.env.UAZAPI_TOKEN).update(payload).digest("hex")
+  );
+}
+export function readReceipt(value, id) {
+  if (
+    typeof value !== "string" ||
+    value.length > 30000 ||
+    !process.env.UAZAPI_TOKEN
+  )
+    throw fail("Comprovante da campanha indisponível.", 409);
+  const [payload, signature] = value.split(".");
+  const expected = createHmac("sha256", process.env.UAZAPI_TOKEN)
+    .update(payload)
+    .digest("hex");
+  if (
+    !signature ||
+    signature.length !== expected.length ||
+    !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
+  )
+    throw fail("Comprovante inválido.", 403);
+  const record = JSON.parse(Buffer.from(payload, "base64url").toString());
+  if (record.id !== id)
+    throw fail("Comprovante não corresponde à campanha.", 403);
+  return { ...record, receipt: value };
+}
+const directInFlight = new Map();
+async function directCampaign(record) {
+  if (directInFlight.has(record.id)) return directInFlight.get(record.id);
+  const run = (async () => {
+    const marker = `Flying CRM ${record.id} · `;
+    const folders = await uaz("/sender/listfolders");
+    if (!Array.isArray(folders))
+      throw fail("Não foi possível verificar a fila da uAzapi.", 502);
+    const existing = folders.find((f) => f.info?.startsWith(marker));
+    const result = { ...record, direct: true };
+    if (existing) {
+      Object.assign(result, {
+        folderId: existing.id,
+        status: existing.status,
+        apiAccepted: existing.log_total,
+      });
+    } else {
+      try {
+        const queued = await uaz("/sender/advanced", {
+          delayMin: record.min,
+          delayMax: record.max,
+          info: marker + record.name,
+          messages: record.recipients.map((c) => ({
+            number: normalizePhone(c.phone).slice(1),
+            type: "text",
+            text: record.message.replaceAll("{nome}", c.name.split(" ")[0]),
+          })),
+        });
+        if (!queued.folder_id) throw Error("Identificador ausente");
+        Object.assign(result, {
+          folderId: queued.folder_id,
+          status: "queued",
+          apiAccepted: queued.count,
+        });
+      } catch {
+        Object.assign(result, {
+          status: "unknown",
+          error:
+            "Resposta incerta da uAzapi. Confira a fila da instância antes de criar outro disparo; não há reenvio automático.",
+        });
+      }
+    }
+    return { ...result, receipt: receiptFor(result) };
+  })();
+  directInFlight.set(record.id, run);
+  try {
+    return await run;
+  } finally {
+    directInFlight.delete(record.id);
+  }
+}
+export async function loadCampaign(id, receipt) {
+  if (!/^[\w-]{16,80}$/.test(id || "")) throw fail("Campanha inválida.");
+  if (receipt) return readReceipt(receipt, id);
+  const raw = await redis(["GET", "flying:campaign:" + id]);
+  if (!raw) throw fail("Campanha não encontrada.", 404);
+  return JSON.parse(raw);
 }
