@@ -88,7 +88,7 @@ export function validateCampaign(c) {
       "Use intervalos positivos, com máximo maior ou igual ao mínimo.",
     );
 }
-export function seed() {
+export function seed(brand = "flying") {
   const names = [
     "Lucas Almeida",
     "Mariana Costa",
@@ -136,24 +136,25 @@ export function seed() {
     demo: true,
     updatedAt: new Date().toISOString(),
   }));
-  contacts.push(
-    ...["Matheus Donha", "Gui Brito"].map((name, i) => ({
-      id: "test" + i,
-      name,
-      phone: ALLOWED[i],
-      city: "",
-      state: "",
-      origin: "WhatsApp",
-      teams: [],
-      types: [],
-      size: "",
-      bought: false,
-      lastPurchase: "",
-      notes: "Contato autorizado exclusivamente para teste.",
-      demo: false,
-      updatedAt: new Date().toISOString(),
-    })),
-  );
+  if (brand === "flying")
+    contacts.push(
+      ...["Matheus Donha", "Gui Brito"].map((name, i) => ({
+        id: "test" + i,
+        name,
+        phone: ALLOWED[i],
+        city: "",
+        state: "",
+        origin: "WhatsApp",
+        teams: [],
+        types: [],
+        size: "",
+        bought: false,
+        lastPurchase: "",
+        notes: "Contato autorizado exclusivamente para teste.",
+        demo: false,
+        updatedAt: new Date().toISOString(),
+      })),
+    );
   return {
     contacts,
     segments: [
@@ -176,16 +177,14 @@ export function seed() {
         filters: { bought: "inactive" },
       },
     ],
-    opportunities: contacts
-      .slice(0, 12)
-      .map((c, i) => ({
-        id: "o" + i,
-        contactId: c.id,
-        title: `${c.teams[0]} · ${c.types[0]}`,
-        stage: i % 6,
-        notes: "Oportunidade demonstrativa",
-        updatedAt: new Date().toISOString(),
-      })),
+    opportunities: contacts.slice(0, 12).map((c, i) => ({
+      id: "o" + i,
+      contactId: c.id,
+      title: `${c.teams[0]} · ${c.types[0]}`,
+      stage: i % 6,
+      notes: "Oportunidade demonstrativa",
+      updatedAt: new Date().toISOString(),
+    })),
     campaigns: [],
   };
 }

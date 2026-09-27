@@ -1664,3 +1664,32 @@ table,
     padding-left: 2px;
   }
 }
+
+/* Store palette: shared screens and layout, selected at build time. */
+:root[data-brand="futpb"] {
+  background: var(--brand-surface);
+  color: #111;
+}
+[data-brand="futpb"] aside {
+  background: var(--brand-sidebar);
+}
+[data-brand="futpb"] nav button.active,
+[data-brand="futpb"] .primary {
+  background: var(--brand-accent);
+  color: #fff;
+}
+[data-brand="futpb"] input[type="checkbox"] {
+  accent-color: var(--brand-accent);
+}
+[data-brand="futpb"] .text-button {
+  color: var(--brand-accent);
+}
+[data-brand="futpb"] .brand-logo {
+  color: white;
+  background: var(--brand-accent);
+}
+[data-brand="futpb"] :focus-visible {
+  outline-color: var(--brand-accent);
+}
+[data-brand="futpb"] .brand-logo { display: grid; place-items: center; }
+[data-brand="futpb"] .brand-logo > strong { font-size: 20px; }

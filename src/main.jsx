@@ -39,7 +39,8 @@ import {
   validateCampaign,
 } from "./domain";
 import "./style.css";
-import { request, SHEET_URL } from "./api";
+import { request } from "./api";
+import { brand, storageKey } from "./brand";
 const donutBackground = (contacts) => {
   let counts = TYPES.map(
       (t) => contacts.filter((c) => c.types.includes(t)).length,
@@ -91,22 +92,24 @@ const date = (v) => new Date(v).toLocaleDateString("pt-BR");
 function App() {
   const [data, setData] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem("flying-crm-v1")) || seed();
+      return (
+        JSON.parse(localStorage.getItem(storageKey("crm-v1"))) || seed(brand.id)
+      );
     } catch {
-      return seed();
+      return seed(brand.id);
     }
   });
   const [connections, setConnections] = useState({}),
     [busy, setBusy] = useState(false),
     [syncBase, setSyncBase] = useState(() => {
       try {
-        return JSON.parse(localStorage.getItem("flying-sync-base")) || [];
+        return JSON.parse(localStorage.getItem(storageKey("sync-base"))) || [];
       } catch {
         return [];
       }
     }),
     [lastSync, setLastSync] = useState(
-      localStorage.getItem("flying-last-sync") || "",
+      localStorage.getItem(storageKey("last-sync")) || "",
     ),
     [conflicts, setConflicts] = useState([]);
   useEffect(() => {
@@ -156,7 +159,7 @@ function App() {
     [help, setHelp] = useState(false);
   useEffect(() => {
     try {
-      localStorage.setItem("flying-crm-v1", JSON.stringify(data));
+      localStorage.setItem(storageKey("crm-v1"), JSON.stringify(data));
     } catch {
       setToast("Armazenamento cheio. Exporte seus dados antes de continuar.");
     }
@@ -227,7 +230,7 @@ function App() {
     setStep(0);
     open("campaign", {
       name: "",
-      message: "Olá, {nome}! Tudo bem? Aqui é da Flying Imports. ⚽",
+      message: brand.greeting,
       id: crypto.randomUUID(),
       min: 15,
       max: 30,
@@ -402,11 +405,15 @@ function App() {
       <aside>
         <div className="brand">
           <div className="brand-logo">
-            <img src="/flying-imports-logo.png" alt="Logo Flying Imports" />
+            {brand.logo ? (
+              <img src={brand.logo} alt={`Logo ${brand.name}`} />
+            ) : (
+              <strong>{brand.initials}</strong>
+            )}
           </div>
           <div>
-            <strong>FLYING IMPORTS</strong>
-            <small>RELACIONAMENTO EM JOGO</small>
+            <strong>{brand.label}</strong>
+            <small>{brand.tagline}</small>
           </div>
         </div>
         <div className="workspace-label">ESPAÇO DE TRABALHO</div>
@@ -435,9 +442,9 @@ function App() {
             <HelpCircle size={18} /> Guia rápido <ArrowUpRight size={15} />
           </button>
           <div className="profile">
-            <span className="avatar dark">FI</span>
+            <span className="avatar dark">{brand.initials}</span>
             <div>
-              <b>Flying Imports</b>
+              <b>{brand.name}</b>
               <small>Visão de demonstração</small>
             </div>
           </div>
@@ -458,7 +465,7 @@ function App() {
           <div className="page-heading">
             <div>
               <div className="eyebrow">
-                FLYING IMPORTS /{" "}
+                {brand.label} /{" "}
                 {page === "Dashboard" ? "VISÃO GERAL" : page.toUpperCase()}
               </div>
               <h1>
@@ -1078,7 +1085,16 @@ function App() {
                     {title === "Google Sheets" ? (
                       <a
                         className="secondary"
-                        href={SHEET_URL}
+                        href={connections.sheetUrl || undefined}
+                        aria-disabled={!connections.sheetUrl}
+                        onClick={(e) => {
+                          if (!connections.sheetUrl) {
+                            e.preventDefault();
+                            setToast(
+                              "Planilha desta marca ainda não configurada.",
+                            );
+                          }
+                        }}
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -1135,7 +1151,7 @@ function App() {
                           type: "application/json",
                         }),
                       );
-                      a.download = "flying-imports-demo.json";
+                      a.download = brand.exportName;
                       a.click();
                       URL.revokeObjectURL(a.href);
                     }}
@@ -1192,9 +1208,9 @@ function App() {
           )}
           <footer>
             <span>
-              FLYING IMPORTS <span className="muted">CRM</span>
+              {brand.footerLabel} <span className="muted">CRM</span>
             </span>
-            <span>Feito para conectar quem vive o futebol.</span>
+            <span>{brand.footer}</span>
           </footer>
         </main>
       </div>
@@ -1567,7 +1583,8 @@ function App() {
                     </div>
                     <div className="phone-preview">
                       <div>
-                        FLYING IMPORTS<small>Prévia da mensagem</small>
+                        {brand.label}
+                        <small>Prévia da mensagem</small>
                       </div>
                       <div className="message-bubble">
                         {draft.mediaType && (
@@ -1889,8 +1906,11 @@ function App() {
       update("contacts", result.contacts);
       setSyncBase(result.contacts);
       setLastSync(result.syncedAt);
-      localStorage.setItem("flying-sync-base", JSON.stringify(result.contacts));
-      localStorage.setItem("flying-last-sync", result.syncedAt);
+      localStorage.setItem(
+        storageKey("sync-base"),
+        JSON.stringify(result.contacts),
+      );
+      localStorage.setItem(storageKey("last-sync"), result.syncedAt);
       setToast("Contatos sincronizados com o Google Sheets.");
     } catch (e) {
       setConflicts(e.conflicts || []);
@@ -1908,7 +1928,7 @@ function App() {
     );
     const base = [...syncBase.filter((x) => x.phone !== c.phone), c.remote];
     setSyncBase(base);
-    localStorage.setItem("flying-sync-base", JSON.stringify(base));
+    localStorage.setItem(storageKey("sync-base"), JSON.stringify(base));
     setConflicts(conflicts.filter((x) => x !== c));
     setToast("Decisão registrada. Clique em Sincronizar para aplicar.");
   }
