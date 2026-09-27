@@ -1691,5 +1691,13 @@ table,
 [data-brand="futpb"] :focus-visible {
   outline-color: var(--brand-accent);
 }
-[data-brand="futpb"] .brand-logo { display: grid; place-items: center; }
-[data-brand="futpb"] .brand-logo > strong { font-size: 20px; }
+[data-brand="futpb"] .brand-logo {
+  width: 48px;
+  height: 48px;
+}
+[data-brand="futpb"] .brand-logo img {
+  position: static;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
