@@ -1,9 +1,25 @@
 import { defineConfig, loadEnv } from "vite";
+import { getBrand } from "./config/brands.js";
 import handler from "./api/crm.js";
 export default defineConfig(({ mode }) => {
-  Object.assign(process.env, loadEnv(mode, process.cwd(), ""));
+  const env = { ...loadEnv(mode, process.cwd(), ""), ...process.env };
+  Object.assign(process.env, env);
+  const brand = getBrand(env.APP_BRAND || "flying");
   return {
+    define: { __APP_BRAND_CONFIG__: JSON.stringify(brand) },
     plugins: [
+      {
+        name: "brand-html",
+        transformIndexHtml(html) {
+          return html
+            .replace("CRM Flying Imports", brand.title)
+            .replace("#111111", brand.colors.theme)
+            .replace(
+              "</head>",
+              `${brand.favicon ? `<link rel="icon" href="${brand.favicon}" />` : ""}</head>`,
+            );
+        },
+      },
       {
         name: "local-crm-api",
         configureServer(server) {

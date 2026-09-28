@@ -1,3 +1,5 @@
+import { getBrand } from "../config/brands.js";
+import { brandEnv, serverBrand, campaignKey } from "./brand.js";
 import { uazapiConfig } from "./demo-config.js";
 import { createSign, createHmac, timingSafeEqual } from "node:crypto";
 import {
@@ -23,20 +25,25 @@ export const HEADERS = [
 const localStorageEnabled = () =>
   process.env.CRM_LOCAL_SERVER === "1" && !process.env.VERCEL;
 export const configured = () => ({
+  brand: serverBrand().id,
+  sheetUrl:
+    brandEnv("GOOGLE_SHEET_ID") || getBrand("flying").sheetId
+      ? `https://docs.google.com/spreadsheets/d/${brandEnv("GOOGLE_SHEET_ID") || getBrand("flying").sheetId}/edit`
+      : null,
   google: !!(
-    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
-    process.env.GOOGLE_PRIVATE_KEY &&
-    process.env.GOOGLE_SHEET_ID
+    brandEnv("GOOGLE_SERVICE_ACCOUNT_EMAIL") &&
+    brandEnv("GOOGLE_PRIVATE_KEY") &&
+    brandEnv("GOOGLE_SHEET_ID")
   ),
   whatsapp: !!(uazapiConfig().url && uazapiConfig().token),
   storage:
     localStorageEnabled() ||
     !!(
-      process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+      brandEnv("UPSTASH_REDIS_REST_URL") && brandEnv("UPSTASH_REDIS_REST_TOKEN")
     ),
   storageMode: localStorageEnabled()
     ? "local"
-    : process.env.UPSTASH_REDIS_REST_URL
+    : brandEnv("UPSTASH_REDIS_REST_URL")
       ? "redis"
       : "direct",
 });
@@ -49,10 +56,10 @@ export async function redis(command) {
   }
   if (!configured().storage)
     throw fail("Configure o armazenamento persistente no servidor.", 503);
-  const r = await fetch(process.env.UPSTASH_REDIS_REST_URL, {
+  const r = await fetch(brandEnv("UPSTASH_REDIS_REST_URL"), {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
+      Authorization: `Bearer ${brandEnv("UPSTASH_REDIS_REST_TOKEN")}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(command),
@@ -95,7 +102,7 @@ async function googleToken() {
     enc({ alg: "RS256", typ: "JWT" }) +
     "." +
     enc({
-      iss: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      iss: brandEnv("GOOGLE_SERVICE_ACCOUNT_EMAIL"),
       scope: "https://www.googleapis.com/auth/spreadsheets",
       aud: "https://oauth2.googleapis.com/token",
       iat: now,
@@ -107,7 +114,7 @@ async function googleToken() {
     input +
     "." +
     signer.sign(
-      process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+      brandEnv("GOOGLE_PRIVATE_KEY").replace(/\\n/g, "\n"),
       "base64url",
     );
   const r = await fetch("https://oauth2.googleapis.com/token", {
@@ -131,7 +138,7 @@ async function googleToken() {
 export async function sheets(path = "", body, method = "GET") {
   const token = await googleToken();
   const r = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${process.env.GOOGLE_SHEET_ID}${path}`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${brandEnv("GOOGLE_SHEET_ID")}${path}`,
     {
       method,
       headers: {
@@ -277,6 +284,8 @@ export function mergeContacts(local, remote, base = []) {
   return { contacts: merged, conflicts };
 }
 export async function saveCampaign(draft) {
+  if (!configured().whatsapp)
+    throw fail("Envios reais desativados ou instância não configurada.", 503);
   validateCampaign(draft);
   const recipients = realAudience(draft.recipients || []);
   if (!recipients.length) throw fail("Nenhum destinatário real autorizado.");
@@ -287,9 +296,10 @@ export async function saveCampaign(draft) {
   const id = draft.id;
   if (!/^[\w-]{16,80}$/.test(id || ""))
     throw fail("Identificador de campanha inválido.");
-  const key = "flying:campaign:" + id;
+  const key = campaignKey("campaign:") + id;
   const record = {
     id,
+    brand: serverBrand().id,
     name: draft.name,
     message: draft.message,
     min: +draft.min,
@@ -302,12 +312,12 @@ export async function saveCampaign(draft) {
   if (!configured().storage) return directCampaign(record);
   const acquired = await redis(["SET", key, JSON.stringify(record), "NX"]);
   if (!acquired) return JSON.parse(await redis(["GET", key]));
-  await redis(["SADD", "flying:campaigns", id]);
+  await redis(["SADD", campaignKey("campaigns"), id]);
   try {
     const result = await uaz("/sender/advanced", {
       delayMin: record.min,
       delayMax: record.max,
-      info: `Flying CRM ${id} · ${record.name}`,
+      info: `${getBrand("flying").campaignPrefix} ${id} · ${record.name}`,
       messages: recipients.map((c) => ({
         number: normalizePhone(c.phone).slice(1),
         type: "text",
@@ -331,7 +341,7 @@ export async function saveCampaign(draft) {
 }
 export async function failedRecipients(id) {
   if (!/^[\w-]{16,80}$/.test(id || "")) throw fail("Campanha inválida.");
-  const raw = await redis(["GET", "flying:campaign:" + id]);
+  const raw = await redis(["GET", campaignKey("campaign:") + id]);
   if (!raw) throw fail("Campanha não encontrada.", 404);
   const campaign = JSON.parse(raw);
   if (!campaign.folderId)
@@ -401,7 +411,7 @@ const directInFlight = new Map();
 async function directCampaign(record) {
   if (directInFlight.has(record.id)) return directInFlight.get(record.id);
   const run = (async () => {
-    const marker = `Flying CRM ${record.id} · `;
+    const marker = `${getBrand("flying").campaignPrefix} ${record.id} · `;
     const folders = await uaz("/sender/listfolders");
     if (!Array.isArray(folders))
       throw fail("Não foi possível verificar a fila da uAzapi.", 502);
@@ -451,7 +461,7 @@ async function directCampaign(record) {
 export async function loadCampaign(id, receipt) {
   if (!/^[\w-]{16,80}$/.test(id || "")) throw fail("Campanha inválida.");
   if (receipt) return readReceipt(receipt, id);
-  const raw = await redis(["GET", "flying:campaign:" + id]);
+  const raw = await redis(["GET", campaignKey("campaign:") + id]);
   if (!raw) throw fail("Campanha não encontrada.", 404);
   return JSON.parse(raw);
 }

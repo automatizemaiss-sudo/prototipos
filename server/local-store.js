@@ -1,12 +1,15 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-let db;
+const databases = new Map();
 function database() {
+  const brand = "shared";
+  let db = databases.get(brand);
   if (!db) {
     const dir = resolve(".local-data");
     mkdirSync(dir, { recursive: true, mode: 0o700 });
     db = new DatabaseSync(resolve(dir, "crm.sqlite"));
+    databases.set(brand, db);
     db.exec(
       "PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; CREATE TABLE IF NOT EXISTS entries (key TEXT PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS members (key TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY(key,value));",
     );

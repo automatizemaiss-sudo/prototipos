@@ -1,3 +1,4 @@
+import { brandEnv, serverBrand, campaignKey } from "../server/brand.js";
 import { createHash } from "node:crypto";
 import {
   configured,
@@ -41,10 +42,10 @@ export default async function handler(req, res) {
     }
     if (action === "campaign-list" && req.method === "GET") {
       if (!configured().storage) return res.status(200).json({ campaigns: [] });
-      const ids = await redis(["SMEMBERS", "flying:campaigns"]);
+      const ids = await redis(["SMEMBERS", campaignKey("campaigns")]);
       const campaigns = await Promise.all(
         ids.map(async (id) =>
-          JSON.parse(await redis(["GET", "flying:campaign:" + id])),
+          JSON.parse(await redis(["GET", campaignKey("campaign:") + id])),
         ),
       );
       return res.status(200).json({ campaigns: campaigns.filter(Boolean) });
@@ -126,7 +127,11 @@ export default async function handler(req, res) {
           failed: ms.filter((m) => m.status === "Failed").length,
         };
         if (!c.direct)
-          await redis(["SET", "flying:campaign:" + c.id, JSON.stringify(c)]);
+          await redis([
+            "SET",
+            campaignKey("campaign:") + c.id,
+            JSON.stringify(c),
+          ]);
       }
       return res.status(200).json(c);
     }

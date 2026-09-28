@@ -1664,3 +1664,90 @@ table,
     padding-left: 2px;
   }
 }
+
+/* Store palette: shared screens and layout, selected at build time. */
+:root[data-brand="futpb"] {
+  background: var(--brand-surface);
+  color: #111;
+}
+[data-brand="futpb"] aside {
+  background: var(--brand-sidebar);
+}
+[data-brand="futpb"] nav button.active,
+[data-brand="futpb"] .primary {
+  background: var(--brand-accent);
+  color: #fff;
+}
+[data-brand="futpb"] input[type="checkbox"] {
+  accent-color: var(--brand-accent);
+}
+[data-brand="futpb"] .text-button {
+  color: var(--brand-accent);
+}
+[data-brand="futpb"] .brand-logo {
+  color: white;
+  background: var(--brand-accent);
+}
+[data-brand="futpb"] :focus-visible {
+  outline-color: var(--brand-accent);
+}
+[data-brand="futpb"] .brand-logo {
+  width: 48px;
+  height: 48px;
+}
+[data-brand="futpb"] .brand-logo img {
+  position: static;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.admin-panel {
+  padding: 28px;
+  max-width: 850px;
+}
+.brand-options {
+  border: 0;
+  padding: 0;
+  margin: 24px 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.brand-options legend {
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+.brand-option {
+  padding: 20px;
+  border: 2px solid #e3e6e9;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.brand-option.selected {
+  border-color: var(--brand-accent);
+}
+.brand-option img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  background: #000;
+  border-radius: 6px;
+}
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+@media (max-width: 600px) {
+  .brand-options {
+    grid-template-columns: 1fr;
+  }
+  .admin-panel {
+    padding: 18px;
+  }
+}

@@ -19,5 +19,3 @@ export async function request(action, body) {
   }
   return d;
 }
-export const SHEET_URL =
-  "https://docs.google.com/spreadsheets/d/1np85HlBvIbnVI1eVLWEnTKqzR4tLpMti_fS1OfCYea4/edit?usp=drivesdk";

@@ -120,3 +120,30 @@ Para produção, Supabase/Postgres pode substituir SQLite/Redis com tabelas de c
 Por solicitação explícita, `server/demo-config.js` inclui a URL e o token descartável da instância demonstrativa. A API usa esses valores quando `UAZAPI_URL` e `UAZAPI_TOKEN` estiverem ausentes ou vazios no ambiente da Vercel. Variáveis de ambiente preenchidas têm prioridade. O módulo não é importado pelo frontend. Remover o fallback quando a instância demonstrativa for desativada.
 
 A conexão foi validada sem `.env` e sem Redis: WhatsApp conectado e autenticado. Essa validação não envia mensagens.
+
+## Duas visualizações no mesmo CRM
+
+Um único projeto e link atendem Flying Imports e FUTPB. Em **Administração**, sem
+senha, selecione a marca. Nome, logo, favicon, título, cores e saudação de novas
+campanhas mudam imediatamente. A escolha fica em `crm-visual-brand` no navegador,
+persiste ao recarregar e acompanha outras abas da mesma origem. Outros visitantes
+podem escolher sua própria visualização. `APP_BRAND` define apenas a marca inicial
+para quem ainda não escolheu; o padrão é `flying`.
+
+As duas visualizações compartilham Google Sheets, ATM+, Redis e a mesma base.
+Usam as variáveis existentes, sem prefixo `FUTPB_`. A configuração temporária ATM+
+existente continua disponível para ambas, assim como a lista de dois destinatários
+autorizados e as restrições de mídia. Trocar a identidade não envia mensagens,
+não sincroniza planilhas e não altera rascunhos ou mensagens existentes.
+
+Para preservar os dados, o navegador continua usando `flying-*`, Redis usa
+`flying:*` e SQLite local usa `.local-data/crm.sqlite`. O conjunto inicial continua
+com 24 contatos fictícios e dois contatos autorizados. Bases locais `futpb-*` da
+versão anterior não são mescladas nem apagadas automaticamente; exporte qualquer
+dado necessário na versão anterior antes de atualizar. A troca de visualização
+não torna o localStorage compartilhado entre navegadores: essa parte continua
+local, com sincronização manual via Google Sheets quando configurada.
+
+A configuração visual central está em `config/brands.js`. A imagem original FUTPB
+é `public/futpb-logo.png`, usada como logo e favicon. Veja `PUBLICACAO.md` para
+publicar a versão única no projeto existente.
