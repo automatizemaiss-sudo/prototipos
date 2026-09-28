@@ -88,7 +88,7 @@ export function validateCampaign(c) {
       "Use intervalos positivos, com máximo maior ou igual ao mínimo.",
     );
 }
-export function seed(brand = "flying") {
+export function seed() {
   const names = [
     "Lucas Almeida",
     "Mariana Costa",
@@ -136,25 +136,24 @@ export function seed(brand = "flying") {
     demo: true,
     updatedAt: new Date().toISOString(),
   }));
-  if (brand === "flying")
-    contacts.push(
-      ...["Matheus Donha", "Gui Brito"].map((name, i) => ({
-        id: "test" + i,
-        name,
-        phone: ALLOWED[i],
-        city: "",
-        state: "",
-        origin: "WhatsApp",
-        teams: [],
-        types: [],
-        size: "",
-        bought: false,
-        lastPurchase: "",
-        notes: "Contato autorizado exclusivamente para teste.",
-        demo: false,
-        updatedAt: new Date().toISOString(),
-      })),
-    );
+  contacts.push(
+    ...["Matheus Donha", "Gui Brito"].map((name, i) => ({
+      id: "test" + i,
+      name,
+      phone: ALLOWED[i],
+      city: "",
+      state: "",
+      origin: "WhatsApp",
+      teams: [],
+      types: [],
+      size: "",
+      bought: false,
+      lastPurchase: "",
+      notes: "Contato autorizado exclusivamente para teste.",
+      demo: false,
+      updatedAt: new Date().toISOString(),
+    })),
+  );
   return {
     contacts,
     segments: [

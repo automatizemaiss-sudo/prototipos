@@ -7,6 +7,7 @@ import {
   Columns3,
   Send,
   Plug,
+  Settings,
   ArrowUpRight,
   ArrowRight,
   Plus,
@@ -40,7 +41,8 @@ import {
 } from "./domain";
 import "./style.css";
 import { request } from "./api";
-import { brand, storageKey } from "./brand";
+import Admin from "./Admin";
+import { loadBrand, saveBrand, applyBrand, storageKey } from "./brand";
 const donutBackground = (contacts) => {
   let counts = TYPES.map(
       (t) => contacts.filter((c) => c.types.includes(t)).length,
@@ -73,6 +75,7 @@ const nav = [
   ["CRM", Columns3],
   ["Campanhas", Send],
   ["Integrações", Plug],
+  ["Administração", Settings],
 ];
 const empty = {
   name: "",
@@ -90,13 +93,27 @@ const empty = {
 };
 const date = (v) => new Date(v).toLocaleDateString("pt-BR");
 function App() {
+  const [brand, setBrand] = useState(loadBrand);
+  useEffect(() => {
+    applyBrand(brand.id);
+  }, [brand.id]);
+  const changeBrand = (id) => {
+    const selectedBrand = saveBrand(id);
+    setBrand(selectedBrand);
+  };
+  useEffect(() => {
+    const syncBrand = (event) => {
+      if (event.key === "crm-visual-brand" || event.key === null)
+        setBrand(loadBrand());
+    };
+    window.addEventListener("storage", syncBrand);
+    return () => window.removeEventListener("storage", syncBrand);
+  }, []);
   const [data, setData] = useState(() => {
     try {
-      return (
-        JSON.parse(localStorage.getItem(storageKey("crm-v1"))) || seed(brand.id)
-      );
+      return JSON.parse(localStorage.getItem(storageKey("crm-v1"))) || seed();
     } catch {
-      return seed(brand.id);
+      return seed();
     }
   });
   const [connections, setConnections] = useState({}),
@@ -483,6 +500,7 @@ function App() {
                     CRM: "Do primeiro interesse à próxima camisa.",
                     Campanhas:
                       "Conversas que aproximam sua marca de quem torce com você.",
+                    Administração: "Escolha a identidade visual deste CRM.",
                     Integrações: "Suas ferramentas, conectadas à sua operação.",
                   }[page]
                 }
@@ -1024,6 +1042,9 @@ function App() {
                 )}
               </section>
             </>
+          )}
+          {page === "Administração" && (
+            <Admin brand={brand} onBrandChange={changeBrand} />
           )}
           {page === "Integrações" && (
             <>

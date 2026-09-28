@@ -1,53 +1,44 @@
-# Publicar CRM FUTPB sem substituir a Flying
+# Publicação única — Flying Imports e FUTPB
 
-## Estado entregue
+A mudança de plano usa **um único projeto Vercel**, com todas as credenciais e
+integrações compartilhadas. Não crie um segundo projeto para FUTPB.
 
-- Branch local: `codex/futpb-multibrand`.
-- Commit local inicial: `297a4ee` (configurações, isolamento, logo e testes).
-- Ajuste final de enquadramento da logo e este guia: pendentes de commit pelo usuário.
-- A branch remota foi criada a partir de `main`, mas o código novo não foi enviado.
-  O Git local e o conector retornaram 403. Faça o push pelo GitHub Desktop.
-- Nenhuma alteração foi integrada à `main` e nenhum novo deploy foi feito.
-- Na Vercel, `APP_BRAND=flying` foi salvo no projeto `prototipos` em todos os
-  ambientes. Não houve redeploy nem alteração de credenciais.
+## Commit e publicação pelo usuário
 
-## Validar localmente
+1. Faça commit das alterações na branch `codex/futpb-multibrand` e envie ao GitHub.
+2. Revise e integre a branch à `main` quando desejar publicar.
+3. Use o projeto existente `automatize-mais/prototipos`, conectado ao repositório
+   `automatizemaiss-sudo/prototipos`. O endereço continua sendo
+   https://prototipos-zeta.vercel.app/.
+4. Preserve as variáveis existentes de Google Sheets, ATM+ e Redis.
+   Variáveis `FUTPB_*` não são mais usadas. Não há senha administrativa a configurar.
+5. `APP_BRAND=flying` define a apresentação inicial; `futpb` também é válido.
+   A troca em Administração funciona sem novo build ou deploy.
+6. Build: `npm run build`; saída: `dist`; framework: Vite; raiz: `.`.
+
+## Uso
+
+Abra **Administração** e selecione **CRM Flying Imports** ou **CRM FUTPB**.
+A identidade muda imediatamente e fica salva neste navegador. Os dados permanecem
+os mesmos. Outros visitantes escolhem sua própria visualização.
+
+As credenciais continuam apenas no servidor. Contatos, campanhas, histórico e
+sincronização usam os caminhos existentes da Flying. Os dois números autorizados
+continuam sendo os únicos destinatários possíveis de disparos reais.
+
+## Validação
 
 ```sh
 npm test
 APP_BRAND=flying npm run build
 APP_BRAND=futpb npm run build
-APP_BRAND=futpb npm run dev -- --host 127.0.0.1
+npm run dev -- --host 127.0.0.1
 ```
 
-Foram validados os 11 testes, os builds das duas marcas, as seis telas em ambas
-as marcas e uma simulação local FUTPB. Nenhuma mensagem real foi enviada.
+Confira a troca nos dois sentidos, persistência após recarregar, logo, favicon,
+título e uma campanha em simulação. Trocar marca não deve criar mensagens reais
+nem apagar contatos ou históricos. Rascunhos existentes mantêm seu texto;
+novas campanhas usam a saudação da marca atualmente escolhida.
 
-## Vercel
-
-1. Faça commit dos ajustes finais e push de `codex/futpb-multibrand`.
-2. Na equipe `Automatize Mais`, crie um **novo projeto**, por exemplo `crm-futpb`,
-   conectado ao repositório `automatizemaiss-sudo/prototipos`.
-3. Selecione a branch `codex/futpb-multibrand` para a primeira publicação.
-   Confira que o commit contém `config/brands.js` e `public/futpb-logo.png`.
-4. Framework Vite, build `npm run build`, diretório de saída `dist`, raiz `.`.
-5. Configure em todos os ambientes: `APP_BRAND=futpb` e
-   `FUTPB_ENABLE_REAL_SENDS=false`. Não importe o `.env.local` da Flying.
-6. Antes de publicar, confirme que o destino é **crm-futpb**, nunca `prototipos`.
-7. Confira título CRM FUTPB, logo, 24 contatos fictícios e integrações desligadas.
-   `/api/crm?action=status` deve retornar `brand: "futpb"`, `google: false`,
-   `whatsapp: false` e `storage: false` enquanto as integrações estiverem vazias.
-8. A Flying deve permanecer em https://prototipos-zeta.vercel.app/ com sua
-   identidade original. Foi conferida durante a entrega.
-
-Depois de revisar e integrar a branch à `main`, os dois projetos podem publicar
-`main` com suas respectivas variáveis de marca. Faça novo deploy ao mudar
-`APP_BRAND`, pois ela é utilizada no build e no servidor.
-
-## Integrações pendentes
-
-A base FUTPB é demonstrativa e independente, salva no navegador. Google Sheets,
-Redis compartilhado e ATM+ ainda dependem de recursos e credenciais próprios.
-Configure somente as variáveis `FUTPB_*` documentadas em `.env.example`.
-Não reutilize a planilha ativa nem a instância ATM+ da Flying. Disparos exigem
-ativação explícita e continuam limitados aos dois números autorizados no servidor.
+As alterações desta etapa ficam na pasta para commit e publicação pelo usuário.
+Nenhum deploy foi realizado nesta etapa.

@@ -121,41 +121,29 @@ Por solicitação explícita, `server/demo-config.js` inclui a URL e o token des
 
 A conexão foi validada sem `.env` e sem Redis: WhatsApp conectado e autenticado. Essa validação não envia mensagens.
 
-## Duas marcas no mesmo código
+## Duas visualizações no mesmo CRM
 
-A configuração pública está em `config/brands.js`. `APP_BRAND=flying` (padrão para
-compatibilidade) preserva a Flying; `APP_BRAND=futpb` seleciona CRM FUTPB no build
-Vite e na API. Um valor desconhecido interrompe o build. A variável deve existir
-nos ambientes de build e execução da Vercel; após alterá-la, faça novo deploy.
-Não exponha segredos com prefixo `VITE_`.
+Um único projeto e link atendem Flying Imports e FUTPB. Em **Administração**, sem
+senha, selecione a marca. Nome, logo, favicon, título, cores e saudação de novas
+campanhas mudam imediatamente. A escolha fica em `crm-visual-brand` no navegador,
+persiste ao recarregar e acompanha outras abas da mesma origem. Outros visitantes
+podem escolher sua própria visualização. `APP_BRAND` define apenas a marca inicial
+para quem ainda não escolheu; o padrão é `flying`.
 
-A FUTPB inicia com 24 contatos fictícios e nenhum histórico de campanha. O estado
-no navegador usa `futpb-*`; o Redis usa `futpb:*`; SQLite local usa
-`.local-data/futpb/crm.sqlite`. As chaves e o SQLite originais da Flying são
-preservados. A base de demonstração é local ao navegador, não compartilhada.
+As duas visualizações compartilham Google Sheets, ATM+, Redis e a mesma base.
+Usam as variáveis existentes, sem prefixo `FUTPB_`. A configuração temporária ATM+
+existente continua disponível para ambas, assim como a lista de dois destinatários
+autorizados e as restrições de mídia. Trocar a identidade não envia mensagens,
+não sincroniza planilhas e não altera rascunhos ou mensagens existentes.
 
-As integrações FUTPB leem exclusivamente as variáveis `FUTPB_*` de `.env.example`.
-Não há fallback para a conta Google, Redis, ATM+ ou token demonstrativo da Flying.
-Uma planilha com o ID conhecido da Flying ou igual a `GOOGLE_SHEET_ID` é rejeitada.
-Configure uma planilha e uma instância ATM+ separadas para testes. Não copie a
-base ativa nem credenciais da Flying para o novo projeto.
+Para preservar os dados, o navegador continua usando `flying-*`, Redis usa
+`flying:*` e SQLite local usa `.local-data/crm.sqlite`. O conjunto inicial continua
+com 24 contatos fictícios e dois contatos autorizados. Bases locais `futpb-*` da
+versão anterior não são mescladas nem apagadas automaticamente; exporte qualquer
+dado necessário na versão anterior antes de atualizar. A troca de visualização
+não torna o localStorage compartilhado entre navegadores: essa parte continua
+local, com sincronização manual via Google Sheets quando configurada.
 
-ATM+ permanece desativada mesmo com credenciais até definir
-`FUTPB_ENABLE_REAL_SENDS=true`. O filtro de destinatários autorizados continua
-obrigatório no servidor; mídia continua desativada. A ativação e um envio real
-não fazem parte da validação desta adaptação. Para incluir os contatos de teste,
-use uma planilha FUTPB configurada, seguindo o esquema existente e marcando apenas
-os números já autorizados como não demonstrativos.
-
-### Publicações separadas
-
-- Flying: projeto Vercel `automatize-mais/prototipos`, branch de produção `main`,
-  https://prototipos-zeta.vercel.app/; configurar `APP_BRAND=flying`.
-- FUTPB: novo projeto conectado a `automatizemaiss-sudo/prototipos`, com
-  `APP_BRAND=futpb` e `FUTPB_ENABLE_REAL_SENDS=false` em todos os ambientes.
-- Validar `npm test`, build das duas marcas, navegação e `/api/crm?action=status`
-  antes de integrar a branch de trabalho. Conferir projeto, equipe, branch e
-  variáveis antes de cada publicação. Não promover o deploy FUTPB no projeto Flying.
-
-A imagem original enviada para a FUTPB está em `public/futpb-logo.png` e é usada
-como logo e favicon, sem alterações no arquivo.
+A configuração visual central está em `config/brands.js`. A imagem original FUTPB
+é `public/futpb-logo.png`, usada como logo e favicon. Veja `PUBLICACAO.md` para
+publicar a versão única no projeto existente.

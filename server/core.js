@@ -1,3 +1,4 @@
+import { getBrand } from "../config/brands.js";
 import { brandEnv, serverBrand, campaignKey } from "./brand.js";
 import { uazapiConfig } from "./demo-config.js";
 import { createSign, createHmac, timingSafeEqual } from "node:crypto";
@@ -26,8 +27,8 @@ const localStorageEnabled = () =>
 export const configured = () => ({
   brand: serverBrand().id,
   sheetUrl:
-    brandEnv("GOOGLE_SHEET_ID") || serverBrand().sheetId
-      ? `https://docs.google.com/spreadsheets/d/${brandEnv("GOOGLE_SHEET_ID") || serverBrand().sheetId}/edit`
+    brandEnv("GOOGLE_SHEET_ID") || getBrand("flying").sheetId
+      ? `https://docs.google.com/spreadsheets/d/${brandEnv("GOOGLE_SHEET_ID") || getBrand("flying").sheetId}/edit`
       : null,
   google: !!(
     brandEnv("GOOGLE_SERVICE_ACCOUNT_EMAIL") &&
@@ -316,7 +317,7 @@ export async function saveCampaign(draft) {
     const result = await uaz("/sender/advanced", {
       delayMin: record.min,
       delayMax: record.max,
-      info: `${serverBrand().campaignPrefix} ${id} · ${record.name}`,
+      info: `${getBrand("flying").campaignPrefix} ${id} · ${record.name}`,
       messages: recipients.map((c) => ({
         number: normalizePhone(c.phone).slice(1),
         type: "text",
@@ -402,7 +403,7 @@ export function readReceipt(value, id) {
   )
     throw fail("Comprovante inválido.", 403);
   const record = JSON.parse(Buffer.from(payload, "base64url").toString());
-  if (record.id !== id || (record.brand || "flying") !== serverBrand().id)
+  if (record.id !== id)
     throw fail("Comprovante não corresponde à campanha.", 403);
   return { ...record, receipt: value };
 }
@@ -410,7 +411,7 @@ const directInFlight = new Map();
 async function directCampaign(record) {
   if (directInFlight.has(record.id)) return directInFlight.get(record.id);
   const run = (async () => {
-    const marker = `${serverBrand().campaignPrefix} ${record.id} · `;
+    const marker = `${getBrand("flying").campaignPrefix} ${record.id} · `;
     const folders = await uaz("/sender/listfolders");
     if (!Array.isArray(folders))
       throw fail("Não foi possível verificar a fila da uAzapi.", 502);
